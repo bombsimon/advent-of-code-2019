@@ -42,3 +42,19 @@ perl -MPOSIX -nE '$x += floor($_/3)-2; END { say $x; }' input
 ```sh
 perl -MPOSIX -nE '$x = $_; while(1){ $x = floor($x/3)-2; last if $x < 0;  $y += $x }; END{ say $y }' input
 ```
+
+## Other solutions
+
+Other solutions for this task
+
+### Go
+
+The Go directory holds a Go implementation of the problem. To run it, install Go
+and run/compile it. The first argument should be the input file.
+
+```sh
+go run go/main.go input
+part one: 3402609
+part two: 5101025
+
+```
