@@ -58,3 +58,11 @@ part one: 3402609
 part two: 5101025
 
 ```
+
+### Elixir
+
+Start `iex` shell with `iex -S mix` and run the methods, e.g.
+
+```sh
+iex> DecemberOne.part_one("/path/to/input")
+```
