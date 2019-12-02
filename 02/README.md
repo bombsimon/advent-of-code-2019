@@ -128,3 +128,19 @@ go run go/main.go input
 part one: 7594646
 part two: 3376
 ```
+
+### Elixir
+
+Start iex and run part one and two.
+
+```sh
+iex -S mix
+Erlang/OTP 22 [erts-10.5.3] [source] [64-bit] [smp:8:8] [ds:8:8:10] [async-threads:1] [hipe] [dtrace]
+
+Interactive Elixir (1.9.2) - press Ctrl+C to exit (type h() ENTER for help)
+iex(1)> DecemberTwo.part_one("../input")
+7594646
+iex(2)> DecemberTwo.part_two("../input")
+3376
+iex(3)>
+```
