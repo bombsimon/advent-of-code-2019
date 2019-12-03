@@ -24,7 +24,18 @@ def main():
 
     all_distances = [manhattan_distance((0, 0), ck) for ck in common_keys]
 
-    print(min(all_distances))
+    print("shortest distance from 0,0: {}".format(min(all_distances)))
+
+    # Get the number of steps it took to reach each point in one and two, sort
+    # the keys and add them together to see which one has the lowest total.
+    steps_one = [coordinates_one[k] for k in sorted(common_keys)]
+    steps_two = [coordinates_two[k] for k in sorted(common_keys)]
+
+    print(
+        "the shortest total intersection is {}".format(
+            min([steps_one[x] + steps_two[x] for x in range(len(steps_one))])
+        )
+    )
 
 
 def mark(steps):
@@ -34,29 +45,35 @@ def mark(steps):
     """
     x_coordiante, y_coordiante = 0, 0
     coordinates = {}
+    total_steps = 0
+
+    def add_y(x, y):
+        return x, y + 1
+
+    def dec_y(x, y):
+        return x, y - 1
+
+    def add_x(x, y):
+        return x + 1, y
+
+    def dec_x(x, y):
+        return x - 1, y
+
+    actions = {"U": dec_y, "D": add_y, "L": dec_x, "R": add_x}
 
     for step in steps:
         direction, length = get_diration_and_length(step)
 
-        if direction == "U":
-            for _ in range(length):
-                x_coordiante -= 1
-                coordinates[(x_coordiante, y_coordiante)] = True
+        for _ in range(length):
+            total_steps += 1
+            x_coordiante, y_coordiante = actions[direction](
+                x_coordiante, y_coordiante
+            )
 
-        if direction == "D":
-            for _ in range(length):
-                x_coordiante += 1
-                coordinates[(x_coordiante, y_coordiante)] = True
+            if (x_coordiante, y_coordiante) not in coordinates:
+                coordinates[(x_coordiante, y_coordiante)] = 0
 
-        if direction == "L":
-            for _ in range(length):
-                y_coordiante -= 1
-                coordinates[(x_coordiante, y_coordiante)] = True
-
-        if direction == "R":
-            for _ in range(length):
-                y_coordiante += 1
-                coordinates[(x_coordiante, y_coordiante)] = True
+            coordinates[(x_coordiante, y_coordiante)] += total_steps
 
     return coordinates
 
