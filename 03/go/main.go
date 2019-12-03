@@ -15,6 +15,8 @@ type coordinates struct {
 	y int
 }
 
+type coordinateMap map[coordinates]int
+
 // Directions
 const (
 	Up    = "U"
@@ -39,17 +41,18 @@ func main() {
 		r2               = strings.Split(fileLines[1], ",")
 		distances        []int
 		shortestDistance int
+		fewestSteps      int
 	)
 
 	m1 := mark(r1)
 	m2 := mark(r2)
 
-	bothFunc := func(ma, mb map[coordinates]struct{}) map[coordinates]struct{} {
-		both := map[coordinates]struct{}{}
+	bothFunc := func(ma, mb coordinateMap) coordinateMap {
+		both := coordinateMap{}
 
 		for k := range ma {
 			if _, ok := mb[k]; ok {
-				both[k] = struct{}{}
+				both[k] = ma[k] + mb[k]
 			}
 		}
 
@@ -60,6 +63,12 @@ func main() {
 
 	for c := range intersections {
 		distances = append(distances, manhattanDistance(c))
+
+		totalSteps := intersections[c]
+
+		if fewestSteps == 0 || totalSteps < fewestSteps {
+			fewestSteps = totalSteps
+		}
 	}
 
 	for _, d := range distances {
@@ -69,40 +78,50 @@ func main() {
 	}
 
 	fmt.Println("shortest distance", shortestDistance)
+	fmt.Println("fewest steps", fewestSteps)
 }
 
-func mark(steps []string) map[coordinates]struct{} {
+func mark(steps []string) map[coordinates]int {
+	type updateCoordianteFunc func(x, y int) (int, int)
+
 	var (
-		x, y = 0, 0
-		c    = map[coordinates]struct{}{}
+		x, y          = 0, 0
+		totalSteps    = 0
+		c             = coordinateMap{}
+		updateFuncMap = map[string]updateCoordianteFunc{
+			Up: func(x, y int) (int, int) {
+				y--
+				return x, y
+			},
+			Down: func(x, y int) (int, int) {
+				y++
+				return x, y
+			},
+			Left: func(x, y int) (int, int) {
+				x--
+				return x, y
+			},
+			Right: func(x, y int) (int, int) {
+				x++
+				return x, y
+			},
+		}
 	)
 
 	for _, step := range steps {
 		direction, length := getDirectionAndLength(step)
 
-		switch direction {
-		case Up:
-			for range make([]struct{}, length) {
-				y--
-				c[coordinates{x, y}] = struct{}{}
+		for range make([]struct{}, length) {
+			totalSteps++
+
+			x, y = updateFuncMap[direction](x, y)
+
+			co := coordinates{x, y}
+			if _, ok := c[co]; !ok {
+				c[co] = 0
 			}
-		case Down:
-			for range make([]struct{}, length) {
-				y++
-				c[coordinates{x, y}] = struct{}{}
-			}
-		case Left:
-			for range make([]struct{}, length) {
-				x--
-				c[coordinates{x, y}] = struct{}{}
-			}
-		case Right:
-			for range make([]struct{}, length) {
-				x++
-				c[coordinates{x, y}] = struct{}{}
-			}
-		default:
-			panic("nope")
+
+			c[co] += totalSteps
 		}
 	}
 
