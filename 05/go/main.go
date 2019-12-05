@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+// paramMode represents the parameter mode which can be positional (the value at
+// the position) or immediate (the actual value).
 type paramMode int
 
 const (
@@ -26,8 +28,7 @@ const (
 	opCodeJumpIfFalse = 6
 	opCodeLessThan    = 7
 	opCodeEquals      = 8
-	opCodeIgnore      = 99
-	sequenceSkipSteps = 3
+	opCodeHalt        = 99
 )
 
 func main() {
@@ -58,124 +59,115 @@ func partOne(originalSequence []int) {
 	sequence := make([]int, len(originalSequence))
 	copy(sequence, originalSequence)
 
-	for i := 0; i < len(sequence); i++ {
-		if sequence[i] == opCodeIgnore {
-			break
+	process(sequence, 0)
+}
+
+func process(sequence []int, ptr int) {
+	opCode := sequence[ptr]
+
+	// Halt code found, stop processing.
+	if opCode == opCodeHalt {
+		return
+	}
+
+	// Pointer is outside of list range.
+	if ptr > len(sequence) {
+		return
+	}
+
+	// Get firwst two arguments, parse their input code and the actual op code
+	// for larger numbers.
+	first, second, pos := sequence[ptr+1], sequence[ptr+2], sequence[ptr+3]
+	firstMode, secondMode, opCode := parseOpCode(opCode)
+
+	// Convert immediate to positional if within boundaries.
+	if firstMode == paramModePosition && len(sequence) >= first {
+		first = sequence[first]
+	}
+
+	if secondMode == paramModePosition && len(sequence) >= second {
+		second = sequence[second]
+	}
+
+	switch opCode {
+	case opCodeAdd:
+		sequence[pos] = first + second
+		process(sequence, ptr+4)
+	case opCodeMultiply:
+		sequence[pos] = first * second
+		process(sequence, ptr+4)
+	case opCodeStore:
+		sequence[second] = readInput()
+		process(sequence, ptr+2)
+	case opCodeOutput:
+		fmt.Println(first)
+		process(sequence, ptr+2)
+	case opCodeJumpIfTrue:
+		if first != 0 {
+			process(sequence, second)
+		} else {
+			process(sequence, ptr+3)
+		}
+	case opCodeJumpIfFalse:
+		if first == 0 {
+			process(sequence, second)
+		} else {
+			process(sequence, ptr+3)
+		}
+	case opCodeLessThan:
+		if first < second {
+			sequence[pos] = 1
+		} else {
+			sequence[pos] = 0
 		}
 
-		if i >= len(sequence)-sequenceSkipSteps {
-			continue
+		process(sequence, ptr+4)
+	case opCodeEquals:
+		if first == second {
+			sequence[pos] = 1
+		} else {
+			sequence[pos] = 0
 		}
 
-		var (
-			opCode = sequence[i]
-			n1Val  = sequence[i+1]
-			n2Val  = sequence[i+2]
-			pos    = sequence[i+3]
-		)
-
-		paramModeOne, paramModeTwo, _, opCode := parseOpCode(opCode)
-
-		switch opCode {
-		case opCodeStore, opCodeOutput:
-			// Always immediate for store and output.
-		default:
-			if paramModeOne == paramModePosition {
-				n1Val = sequence[n1Val]
-			}
-
-			if paramModeTwo == paramModePosition {
-				n2Val = sequence[n2Val]
-			}
-		}
-
-		switch opCode {
-		case opCodeAdd:
-			sequence[pos] = n1Val + n2Val
-			i += sequenceSkipSteps
-		case opCodeMultiply:
-			sequence[pos] = n1Val * n2Val
-			i += sequenceSkipSteps
-		case opCodeStore:
-			reader := bufio.NewReader(os.Stdin)
-
-			fmt.Print("input: ")
-
-			text, err := reader.ReadString('\n')
-			if err != nil {
-				panic(err)
-			}
-
-			code, err := strconv.Atoi(strings.TrimSpace(text))
-			if err != nil {
-				panic(err)
-			}
-
-			sequence[n1Val] = code
-			i++
-		case opCodeOutput:
-			fmt.Println(sequence[n1Val])
-			i++
-		case opCodeJumpIfTrue:
-			if n1Val != 0 {
-				i = n2Val - 1
-			} else {
-				// Skip to next instruction
-				i += 2
-			}
-		case opCodeJumpIfFalse:
-			if n1Val == 0 {
-				i = n2Val - 1
-			} else {
-				// Skip to next instruction
-				i += 2
-			}
-		case opCodeLessThan:
-			if n1Val < n2Val {
-				sequence[pos] = 1
-			} else {
-				sequence[pos] = 0
-			}
-
-			i += sequenceSkipSteps
-		case opCodeEquals:
-			if n1Val == n2Val {
-				sequence[pos] = 1
-			} else {
-				sequence[pos] = 0
-			}
-
-			i += sequenceSkipSteps
-		case opCodeIgnore:
-			break
-		default:
-			panic(fmt.Sprintf("unknown instruction at position %d, opCode: %d", i, opCode))
-		}
+		process(sequence, ptr+4)
+	default:
+		panic(fmt.Sprintf("unknown instruction at position %d, opCode: %d", ptr, opCode))
 	}
 }
 
-func parseOpCode(opCode int) (paramMode, paramMode, paramMode, int) {
-	codeAsString := fmt.Sprintf("%05d", opCode)
+func parseOpCode(opCode int) (paramMode, paramMode, int) {
+	var (
+		code          = opCode % 100
+		modePositions = opCode / 100
+		firstMode     = modePositions % 10
+		secondMode    = modePositions / 10
+	)
 
-	code, err := strconv.Atoi(codeAsString[4:])
-	if err != nil {
-		panic(err)
+	return paramMode(firstMode), paramMode(secondMode), code
+}
+
+func readInput() int {
+	var readCode int
+
+	for {
+		reader := bufio.NewReader(os.Stdin)
+
+		fmt.Print("input: ")
+
+		text, err := reader.ReadString('\n')
+		if err != nil {
+			continue
+		}
+
+		code, err := strconv.Atoi(strings.TrimSpace(text))
+		if err != nil {
+			continue
+		}
+
+		readCode = code
+
+		break
 	}
 
-	modeArgOne, err := strconv.Atoi(string(codeAsString[2]))
-	if err != nil {
-		panic(err)
-	}
-
-	modeArgTwo, err := strconv.Atoi(string(codeAsString[1]))
-	if err != nil {
-		panic(err)
-	}
-
-	modeArgThree, err := strconv.Atoi(string(codeAsString[0]))
-	if err != nil {
-		panic(err)
-	}
-
-	return paramMode(modeArgOne), paramMode(modeArgTwo), paramMode(modeArgThree), code
+	return readCode
 }
