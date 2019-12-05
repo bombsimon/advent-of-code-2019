@@ -22,6 +22,10 @@ const (
 	opCodeMultiply    = 2
 	opCodeStore       = 3
 	opCodeOutput      = 4
+	opCodeJumpIfTrue  = 5
+	opCodeJumpIfFalse = 6
+	opCodeLessThan    = 7
+	opCodeEquals      = 8
 	opCodeIgnore      = 99
 	sequenceSkipSteps = 3
 )
@@ -112,10 +116,40 @@ func partOne(originalSequence []int) {
 		case opCodeOutput:
 			fmt.Println(sequence[n1Val])
 			i++
+		case opCodeJumpIfTrue:
+			if n1Val != 0 {
+				i = n2Val - 1
+			} else {
+				// Skip to next instruction
+				i += 2
+			}
+		case opCodeJumpIfFalse:
+			if n1Val == 0 {
+				i = n2Val - 1
+			} else {
+				// Skip to next instruction
+				i += 2
+			}
+		case opCodeLessThan:
+			if n1Val < n2Val {
+				sequence[pos] = 1
+			} else {
+				sequence[pos] = 0
+			}
+
+			i += sequenceSkipSteps
+		case opCodeEquals:
+			if n1Val == n2Val {
+				sequence[pos] = 1
+			} else {
+				sequence[pos] = 0
+			}
+
+			i += sequenceSkipSteps
 		case opCodeIgnore:
-			continue
+			break
 		default:
-			panic(fmt.Sprintf("unknown instruction, opCode: %d", opCode))
+			panic(fmt.Sprintf("unknown instruction at position %d, opCode: %d", i, opCode))
 		}
 	}
 }
