@@ -81,7 +81,7 @@ func process(sequence []int, ptr int) {
 	firstMode, secondMode, opCode := parseOpCode(opCode)
 
 	// Convert immediate to positional if within boundaries.
-	if firstMode == paramModePosition && len(sequence) >= first {
+	if firstMode == paramModePosition && len(sequence) >= first && opCode != opCodeStore {
 		first = sequence[first]
 	}
 
@@ -97,7 +97,7 @@ func process(sequence []int, ptr int) {
 		sequence[pos] = first * second
 		process(sequence, ptr+4)
 	case opCodeStore:
-		sequence[second] = readInput()
+		sequence[first] = readInput()
 		process(sequence, ptr+2)
 	case opCodeOutput:
 		fmt.Println(first)
