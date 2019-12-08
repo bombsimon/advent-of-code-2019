@@ -12,6 +12,8 @@ import (
 const (
 	numberOfRows = 6
 	numberOfCols = 25
+	colorBlack   = 0
+	colorWhite   = 1
 )
 
 // Layer represents a 2D grid with pixels.
@@ -27,8 +29,14 @@ func main() {
 		log.Fatalf("could not read file: %s", err.Error())
 	}
 
+	var layers = createLayers(line)
+
+	partOne(layers)
+	partTwo(layers)
+}
+
+func partOne(layers []Layer) {
 	var (
-		layers               = createLayers(line)
 		fewestZeros          = 0
 		fewestZeroLayerIndex = 0
 	)
@@ -46,6 +54,31 @@ func main() {
 	twos := findOccurancesInlayerOf(layers[fewestZeroLayerIndex], 2)
 
 	fmt.Println("part one: ", ones*twos)
+}
+
+func partTwo(layers []Layer) {
+	var (
+		layerToDraw = layers[0]
+	)
+
+	for _, layer := range layers {
+		for i, row := range layer {
+			for j, col := range row {
+				// Never re-fill transparent
+				if col != colorBlack && col != colorWhite {
+					continue
+				}
+
+				// If there's no active color in the pixil, add it.
+				if layerToDraw[i][j] != colorBlack && layerToDraw[i][j] != colorWhite {
+					layerToDraw[i][j] = col
+				}
+			}
+		}
+	}
+
+	fmt.Println("rendering the image:")
+	printLayerLetter(layerToDraw)
 }
 
 func createLayers(line []byte) []Layer {
@@ -96,15 +129,25 @@ func printLayer(layer Layer) {
 	}
 }
 
-/*
-	createLayer := func() Layer {
-		rows := make([][]int, numberOfRows)
+func printLayerLetter(layer Layer) {
+	var (
+		black       = "█"
+		white       = "░"
+		transparent = " "
+	)
 
-		for i := range rows {
-			cols := make([]int, numberOfCols)
-			rows[i] = cols
+	for _, row := range layer {
+		for _, col := range row {
+			switch col {
+			case colorBlack:
+				fmt.Print(black)
+			case colorWhite:
+				fmt.Print(white)
+			default:
+				fmt.Print(transparent)
+			}
 		}
 
-		return Layer(rows)
+		fmt.Println("")
 	}
-*/
+}
