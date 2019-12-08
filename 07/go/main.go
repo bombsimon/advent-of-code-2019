@@ -30,6 +30,17 @@ const (
 	opCodeHalt        = 99
 )
 
+type computer struct {
+	Name       string
+	Phase      int
+	Input      int
+	InputCount int
+	Value      int
+	Pointer    int
+	Sequence   []int
+	Halted     bool
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		log.Fatal("missing file as input")
@@ -52,33 +63,61 @@ func main() {
 	}
 
 	var (
+		permutationsPartOne = permutations([]int{0, 1, 2, 3, 4})
+		permutationsPartTwo = permutations([]int{5, 6, 7, 8, 9})
+	)
+
+	run(sequence, permutationsPartOne)
+	run(sequence, permutationsPartTwo)
+}
+
+func run(sequence []int, permutations [][]int) {
+	var (
 		highestOutput = 0
 		highestInput  = []int{}
 	)
 
-	for _, perm := range permutations([]int{0, 1, 2, 3, 4}) {
-		var (
-			a = perm[0]
-			b = perm[1]
-			c = perm[2]
-			d = perm[3]
-			e = perm[4]
-		)
-
-		inputs := [][]int{
-			{a, 0},
-			{b, 0},
-			{c, 0},
-			{d, 0},
-			{e, 0},
+	for _, perm := range permutations {
+		inputs := []computer{
+			{Name: "A", Phase: perm[0]},
+			{Name: "B", Phase: perm[1]},
+			{Name: "C", Phase: perm[2]},
+			{Name: "D", Phase: perm[3]},
+			{Name: "E", Phase: perm[4]},
 		}
 
 		lastOutput := 0
-		for i, input := range inputs {
-			lastOutput = run(sequence, input)
 
+		for i := 0; i < len(inputs); i++ {
+			c := inputs[i]
+
+			// Ensure we have a sequence for the permutation.
+			if c.Sequence == nil {
+				c.Sequence = make([]int, len(sequence))
+				copy(c.Sequence, sequence)
+			}
+
+			// Update the current computer/amplifier
+			c.process()
+
+			// Store the updated computer in index i with it's poinuter and
+			// values.
+			inputs[i] = c
+
+			// Set it's current value when stopped to next input.
+			lastOutput = c.Value
+
+			// Set last output to input for next amplifier, or if we're the last
+			// amplifier set it to the first one.
 			if i < len(inputs)-1 {
-				inputs[i+1][1] = lastOutput
+				inputs[i+1].Input = lastOutput
+			} else {
+				inputs[0].Input = lastOutput
+			}
+
+			// If we're the last amplifier but not yet halted, start over.
+			if i == len(inputs)-1 && !c.Halted {
+				i = -1
 			}
 		}
 
@@ -91,105 +130,117 @@ func main() {
 	fmt.Printf("highest thurst '%d' met with '%v'\n", highestOutput, highestInput)
 }
 
-func run(originalSequence, input []int) int {
-	sequence := make([]int, len(originalSequence))
-	copy(sequence, originalSequence)
-
-	var (
-		startPointer = 0
-		output       = 0
-	)
-
-	return process(sequence, startPointer, input, output)
-}
-
-func process(sequence []int, ptr int, input []int, output int) int {
-	opCode := sequence[ptr]
+func (c *computer) process() {
+	opCode := c.Sequence[c.Pointer]
 
 	// Halt code found, stop processing.
 	if opCode == opCodeHalt {
-		return output
+		c.Halted = true
+		return
 	}
 
 	// Pointer is outside of list range.
-	if ptr > len(sequence) {
-		return output
+	if c.Pointer > len(c.Sequence) {
+		return
 	}
 
 	// Get firwst two arguments, parse their input code and the actual op code
 	// for larger numbers.
-	first, second, pos := sequence[ptr+1], sequence[ptr+2], sequence[ptr+3]
+	first, second := c.Sequence[c.Pointer+1], c.Sequence[c.Pointer+2]
 	firstMode, secondMode, opCode := parseOpCode(opCode)
 
-	// Convert immediate to positional if within boundaries.
-	if firstMode == paramModePosition && len(sequence) >= first && opCode != opCodeStore {
-		first = sequence[first]
+	// Store the position (third argument) if there's enough positions left in
+	// memory.
+	pos := 0
+	if len(c.Sequence) > c.Pointer+3 {
+		pos = c.Sequence[c.Pointer+3]
 	}
 
-	if secondMode == paramModePosition && len(sequence) >= second {
-		second = sequence[second]
+	// Convert immediate to positional if within boundaries.
+	if firstMode == paramModePosition && len(c.Sequence) >= first && opCode != opCodeStore {
+		first = c.Sequence[first]
+	}
+
+	if secondMode == paramModePosition && len(c.Sequence) >= second {
+		second = c.Sequence[second]
 	}
 
 	switch opCode {
 	case opCodeAdd:
-		sequence[pos] = first + second
+		c.Sequence[pos] = first + second
+		c.Pointer += 4
 
-		return process(sequence, ptr+4, input, output)
+		c.process()
 
 	case opCodeMultiply:
-		sequence[pos] = first * second
+		c.Sequence[pos] = first * second
+		c.Pointer += 4
 
-		return process(sequence, ptr+4, input, output)
+		c.process()
 
 	case opCodeStore:
-		// Pick first and shift it.
-		in := input[0]
-
-		if len(input) > 1 {
-			input = input[1:]
+		input := c.Phase
+		if c.InputCount > 0 {
+			input = c.Input
 		}
 
-		sequence[first] = in
+		c.Sequence[first] = input
+		c.Pointer += 2
+		c.InputCount++
 
-		return process(sequence, ptr+2, input, output)
+		c.process()
 
 	case opCodeOutput:
-		return process(sequence, ptr+2, input, first)
+		c.Value = first
+		c.Pointer += 2
+
+		// Puase process if opcode > 4
+		if c.Phase > 4 {
+			return
+		}
+
+		c.process()
 
 	case opCodeJumpIfTrue:
 		if first != 0 {
-			return process(sequence, second, input, output)
+			c.Pointer = second
+			c.process()
+		} else {
+			c.Pointer += 3
+			c.process()
 		}
-
-		return process(sequence, ptr+3, input, output)
 
 	case opCodeJumpIfFalse:
 		if first == 0 {
-			return process(sequence, second, input, output)
+			c.Pointer = second
+			c.process()
+		} else {
+			c.Pointer += 3
+			c.process()
 		}
-
-		return process(sequence, ptr+3, input, output)
 
 	case opCodeLessThan:
 		if first < second {
-			sequence[pos] = 1
+			c.Sequence[pos] = 1
 		} else {
-			sequence[pos] = 0
+			c.Sequence[pos] = 0
 		}
 
-		return process(sequence, ptr+4, input, output)
+		c.Pointer += 4
+		c.process()
 
 	case opCodeEquals:
 		if first == second {
-			sequence[pos] = 1
+			c.Sequence[pos] = 1
 		} else {
-			sequence[pos] = 0
+			c.Sequence[pos] = 0
 		}
 
-		return process(sequence, ptr+4, input, output)
+		c.Pointer += 4
+		c.process()
 
 	default:
-		panic(fmt.Sprintf("unknown instruction at position %d, opCode: %d", ptr, opCode))
+		panic(fmt.Sprintf("unknown instruction at position %d, opCode: %d", c.Pointer, opCode))
 	}
 }
 
