@@ -32,6 +32,36 @@ defmodule DecemberThree do
   end
 
   @doc """
+  The solution for part two.
+  """
+  def part_two(file) do
+    {_, contents} = File.read(file)
+
+    [ first, second ] = contents
+                       |> String.trim()
+                       |> String.split("\n")
+                       |> Enum.map(&draw_wire/1)
+
+    common = first
+    |> Map.delete("0,0")
+    |> Enum.reduce(%{}, fn x, acc ->
+      {k, v} = x
+
+      case Map.has_key?(second, k) do
+        true ->
+          %{k => v}
+          |> Map.merge(acc)
+        false ->
+          acc
+      end
+    end)
+    |> Enum.map(fn {k, _v} ->
+      Map.get(first, k) + Map.get(second, k)
+    end)
+    |> Enum.min
+  end
+
+  @doc """
   Calculate manhattan distance, always from 0,0 because that's where I start.
   abs(x0-x1) + abs(y0-y1)
   """
