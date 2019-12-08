@@ -9,10 +9,11 @@ defmodule DecemberThree do
   def part_one(file) do
     {_, contents} = File.read(file)
 
-    [ first, second ] = contents
-                       |> String.trim()
-                       |> String.split("\n")
-                       |> Enum.map(&draw_wire/1)
+    [first, second] =
+      contents
+      |> String.trim()
+      |> String.split("\n")
+      |> Enum.map(&draw_wire/1)
 
     first
     |> Map.delete("0,0")
@@ -23,12 +24,13 @@ defmodule DecemberThree do
         true ->
           %{k => v}
           |> Map.merge(acc)
+
         false ->
           acc
       end
     end)
     |> Enum.map(fn {k, _v} -> manhattan_distance(k) end)
-    |> Enum.min
+    |> Enum.min()
   end
 
   @doc """
@@ -37,28 +39,31 @@ defmodule DecemberThree do
   def part_two(file) do
     {_, contents} = File.read(file)
 
-    [ first, second ] = contents
-                       |> String.trim()
-                       |> String.split("\n")
-                       |> Enum.map(&draw_wire/1)
+    [first, second] =
+      contents
+      |> String.trim()
+      |> String.split("\n")
+      |> Enum.map(&draw_wire/1)
 
-    common = first
-    |> Map.delete("0,0")
-    |> Enum.reduce(%{}, fn x, acc ->
-      {k, v} = x
+    common =
+      first
+      |> Map.delete("0,0")
+      |> Enum.reduce(%{}, fn x, acc ->
+        {k, v} = x
 
-      case Map.has_key?(second, k) do
-        true ->
-          %{k => v}
-          |> Map.merge(acc)
-        false ->
-          acc
-      end
-    end)
-    |> Enum.map(fn {k, _v} ->
-      Map.get(first, k) + Map.get(second, k)
-    end)
-    |> Enum.min
+        case Map.has_key?(second, k) do
+          true ->
+            %{k => v}
+            |> Map.merge(acc)
+
+          false ->
+            acc
+        end
+      end)
+      |> Enum.map(fn {k, _v} ->
+        Map.get(first, k) + Map.get(second, k)
+      end)
+      |> Enum.min()
   end
 
   @doc """
@@ -66,11 +71,12 @@ defmodule DecemberThree do
   abs(x0-x1) + abs(y0-y1)
   """
   def manhattan_distance(xy) do
-    [x, y] = xy
-             |> String.split(",")
-             |> Enum.map(fn x -> x |> String.to_integer end)
+    [x, y] =
+      xy
+      |> String.split(",")
+      |> Enum.map(fn x -> x |> String.to_integer() end)
 
-    Kernel.abs(0-x) + Kernel.abs(0-y)
+    Kernel.abs(0 - x) + Kernel.abs(0 - y)
   end
 
   @doc """
@@ -97,7 +103,7 @@ defmodule DecemberThree do
     length =
       step
       |> String.slice(1, String.length(step))
-      |> String.to_integer
+      |> String.to_integer()
 
     %{"direction" => direction, "length" => length}
   end
@@ -131,8 +137,10 @@ defmodule DecemberThree do
       # IO.puts "Iteration #{Map.get(acc, "steps")}: x,y: #{Map.get(acc, "x", 0)},#{Map.get(acc, "y", 0)}"
 
       update(
-        %{}, instruction["direction"],
-        Map.get(acc, "x", 0), Map.get(acc, "y", 0),
+        %{},
+        instruction["direction"],
+        Map.get(acc, "x", 0),
+        Map.get(acc, "y", 0),
         Map.get(acc, "steps", 0),
         Map.get(acc, "steps", 0) + Map.get(instruction, "length")
       )
@@ -168,30 +176,35 @@ defmodule DecemberThree do
     case current do
       x when x > stop ->
         co
+
       _ ->
         # Store the current position and step.
-        co = co
-        |> Map.put("x", x)
-        |> Map.put("y", y)
-        |> Map.put("steps", current)
+        co =
+          co
+          |> Map.put("x", x)
+          |> Map.put("y", y)
+          |> Map.put("steps", current)
 
         case direction do
           "U" ->
             co
             |> Map.put("#{x},#{y}", current)
-            |> update(direction, x, y+1, current+1, stop)
+            |> update(direction, x, y + 1, current + 1, stop)
+
           "D" ->
             co
             |> Map.put("#{x},#{y}", current)
-            |> update(direction, x, y-1, current+1, stop)
+            |> update(direction, x, y - 1, current + 1, stop)
+
           "L" ->
             co
             |> Map.put("#{x},#{y}", current)
-            |> update(direction, x-1, y, current+1, stop)
+            |> update(direction, x - 1, y, current + 1, stop)
+
           "R" ->
             co
             |> Map.put("#{x},#{y}", current)
-            |> update(direction, x+1, y, current+1, stop)
+            |> update(direction, x + 1, y, current + 1, stop)
         end
     end
   end
