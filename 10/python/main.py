@@ -41,8 +41,15 @@ def main():
     )
 
     shots = 0
+    animate = False
+    two_hundred = None
+
+    # Remove the best spot to ensure has_astroids report correct.
+    best_x, best_y = best["coordinates"]
+    astroid_map[best_x][best_y] = SPACE
+
     while has_astroids(astroid_map):
-        all_coords = get_line_of_sight(astroid_map, best["coordinates"], True)
+        all_coords = get_line_of_sight(astroid_map, best["coordinates"])
 
         sorted_coords = sorted(all_coords.items())
         sorted_coords.reverse()
@@ -52,17 +59,21 @@ def main():
             shots += 1
 
             if shots == 200:
-                print("200th astroid is at {},{}".format(col, row))
-
-                break
+                two_hundred = (col, row)
 
             astroid_map[row][col] = DESTROYED
 
-            print_map(astroid_map, best["coordinates"])
-            time.sleep(0.05)
+            if animate:
+                print_map(astroid_map, best["coordinates"])
+                time.sleep(0.05)
+
+    print("200th astroid shot down is at {}".format(two_hundred))
 
 
 def has_astroids(astroid_map):
+    """
+    Check if there's any astroids left on the map.
+    """
     for e in astroid_map:
         try:
             e.index(ASTROID)
@@ -74,6 +85,9 @@ def has_astroids(astroid_map):
 
 
 def print_map(astroid_map, xy=None):
+    """
+    Print the map. Sorry, not for Windows (change to 'cls')
+    """
     os.system("clear")
 
     if xy is not None:
@@ -86,7 +100,11 @@ def print_map(astroid_map, xy=None):
     print()
 
 
-def get_line_of_sight(astroid_map, coordinates, part_two=False):
+def get_line_of_sight(astroid_map, coordinates):
+    """
+    Get the angle and ditance to all other astroids. If multiple astroids have
+    the same angle, chose the closest one (the others are hidden behind it)
+    """
     x1, y1 = coordinates
     all_coords = {}
 
