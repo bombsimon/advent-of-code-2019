@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 
+import math
+import os
 import sys
+import time
+
+SPACE = "◾️"
+ROCKET = "🚀"
+ASTROID = "🌘"
+DESTROYED = "💥"
 
 
 def main():
@@ -20,35 +28,7 @@ def main():
     # Check the line from all marked coordiantes and the number of astroids
     # visible from that point.
     for coordinates in marked:
-        x1, y1 = coordinates
-        all_coords = {}
-
-        for i, _ in enumerate(astroid_map):
-            for j, _ in enumerate(astroid_map[i]):
-                seen_slopes = {}
-                coordinates_on_line = bresenhams_line_algorithm(
-                    (x1, y1), (i, j)
-                )
-
-                x0, y0 = coordinates_on_line[0]
-                other = coordinates_on_line[1:]
-
-                # All slopes
-                slopes = [
-                    (y - y0) / (x - x0) if x != x0 else x for x, y in other
-                ]
-
-                for idx, slope in enumerate(slopes):
-                    # If we've seen an astroid with this slope for these
-                    # coordiantes it's blocking the rest.
-                    if slope in seen_slopes:
-                        continue
-
-                    fx, fy = other[idx]
-                    if astroid_map[fx][fy] == "#":
-                        all_coords[other[idx]] = True
-                        seen_slopes[slope] = other[idx]
-
+        all_coords = get_line_of_sight(astroid_map, coordinates)
         sees = len(all_coords)
 
         if sees > best["sees"] or best["sees"] == 0:
@@ -60,6 +40,80 @@ def main():
         )
     )
 
+    shots = 0
+    while has_astroids(astroid_map):
+        all_coords = get_line_of_sight(astroid_map, best["coordinates"], True)
+
+        sorted_coords = sorted(all_coords.items())
+        sorted_coords.reverse()
+
+        for _, data in sorted_coords:
+            row, col = data["coordinates"]
+            shots += 1
+
+            if shots == 200:
+                print("200th astroid is at {},{}".format(col, row))
+
+                break
+
+            astroid_map[row][col] = DESTROYED
+
+            print_map(astroid_map, best["coordinates"])
+            time.sleep(0.05)
+
+
+def has_astroids(astroid_map):
+    for e in astroid_map:
+        try:
+            e.index(ASTROID)
+            return True
+        except ValueError:
+            pass
+
+    return False
+
+
+def print_map(astroid_map, xy=None):
+    os.system("clear")
+
+    if xy is not None:
+        x, y = xy
+        astroid_map[x][y] = ROCKET
+
+    for x in astroid_map:
+        print("  ".join(x))
+
+    print()
+
+
+def get_line_of_sight(astroid_map, coordinates, part_two=False):
+    x1, y1 = coordinates
+    all_coords = {}
+
+    for x2, row in enumerate(astroid_map):
+        for y2, col in enumerate(row):
+            if (x1 == x2 and y1 == y2) or col != ASTROID:
+                continue
+
+            dx = x2 - x1
+            dy = y2 - y1
+
+            angle = math.atan2(dy, dx)
+            degrees = math.degrees(angle)
+            distance = abs(x1 - x2) + abs(y1 - y2)
+
+            if angle in all_coords:
+                if distance > all_coords[angle]["distance"]:
+                    continue
+
+            all_coords[angle] = {
+                "distance": distance,
+                "coordinates": (x2, y2),
+                "degrees": degrees,
+            }
+
+    return all_coords
+
 
 def mark_astroids(astroid_map):
     """
@@ -70,63 +124,12 @@ def mark_astroids(astroid_map):
     for row, _ in enumerate(astroid_map):
         for col, _ in enumerate(astroid_map[row]):
             if astroid_map[row][col] == "#":
+                astroid_map[row][col] = ASTROID
                 astroids.append((row, col))
+            else:
+                astroid_map[row][col] = SPACE
 
     return astroids
-
-
-def bresenhams_line_algorithm(start, end):
-    """Bresenham's Line Algorithm
-    Get all points between start (x0,y0) and end (x1,y1)
-    https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-    http://www.roguebasin.com/index.php?title=Bresenham%27s_Line_Algorithm#Python
-    """
-    # Setup initial conditions
-    start_x, start_y = start
-    end_x, end_y = end
-    delta_x = end_x - start_x
-    delta_y = end_y - start_y
-
-    # Determine how steep the line is
-    is_steep = abs(delta_y) > abs(delta_x)
-
-    # Rotate line
-    if is_steep:
-        start_x, start_y = start_y, start_x
-        end_x, end_y = end_y, end_x
-
-    # Swap start and end points if necessary and store swap state
-    swapped = False
-    if start_x > end_x:
-        start_x, end_x = end_x, start_x
-        start_y, end_y = end_y, start_y
-        swapped = True
-
-    # Recalculate differentials
-    delta_x = end_x - start_x
-    delta_y = end_y - start_y
-
-    # Calculate error
-    error = int(delta_x / 2.0)
-    ystep = 1 if start_y < end_y else -1
-
-    # Iterate over bounding box generating points between start and end
-    y = start_y
-    points = []
-
-    for x in range(start_x, end_x + 1):
-        coord = (y, x) if is_steep else (x, y)
-        points.append(coord)
-        error -= abs(delta_y)
-        if error < 0:
-            y += ystep
-            error += delta_x
-
-    # Reverse the list if the coordinates were swapped
-    if swapped:
-        points.reverse()
-
-    return points
 
 
 if __name__ == "__main__":
