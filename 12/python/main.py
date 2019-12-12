@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-import time
 from pprint import pprint
 
 
@@ -22,17 +21,18 @@ def main():
                 }
             )
 
-    apply(positions)
+    part_one(positions)
 
 
-def apply(positions):
-    debug = False
-    steps = 1000
+def part_one(positions, times=1000, debug=False):
+    """
+    Apply the velocity to each moon the number of times given
+    """
     velocity = [{"x": 0, "y": 0, "z": 0} for _ in range(len(positions))]
 
-    for _ in range(1000):
-        for i in range(len(positions)):
-            for comparison in range(len(positions)):
+    for _ in range(times):
+        for i, _ in enumerate(positions):
+            for comparison, _ in enumerate(positions):
                 if i == comparison:
                     continue
 
@@ -69,16 +69,26 @@ def apply(positions):
 
         total_sum += positions[i]["energy"]
 
-    # NOT: 2151
-    pprint(positions)
+    show(positions, velocity)
+
     print(total_sum)
 
 
-def show(positions):
-    for moon in positions:
+def show(positions, velocity=None):
+    """
+    Show the state of passed positions
+    """
+    for i, _ in enumerate(positions):
+        vel = "<unknown>"
+
+        if velocity is not None:
+            vel = "<x={:<4d} y={:<4d} z={:d}>".format(
+                velocity[i]["x"], velocity[i]["y"], velocity[i]["z"]
+            )
+
         print(
-            "<x={:<4d} y={:<4d} z={:d}>".format(
-                moon["x"], moon["y"], moon["z"]
+            "<x={:<4d} y={:<4d} z={:d}> | {}".format(
+                positions[i]["x"], positions[i]["y"], positions[i]["z"], vel
             )
         )
 
