@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "dependencies": {
+    "elm-format": "0.8.2",
+    "elm-live": "4.0.1",
+    "elm-test": "0.19.1"
+  }
+}

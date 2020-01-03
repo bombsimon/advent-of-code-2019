@@ -66,3 +66,13 @@ Start `iex` shell with `iex -S mix` and run the methods, e.g.
 ```sh
 iex> DecemberOne.part_one("/path/to/input")
 ```
+
+### Elm
+
+Start `elm-live` (or any other preferred way).
+
+```sh
+npx elm-live src/Main.elm -- --output=elm.js
+```
+
+Visist [localhost:8000](http://localhost:8000).
