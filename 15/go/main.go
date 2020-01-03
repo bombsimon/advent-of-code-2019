@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // * ParamModePosition  -> Use the value found at slice[n]
@@ -55,10 +54,15 @@ type computer struct {
 }
 
 const (
-	wall    = "█"
-	path    = "."
-	unknown = " "
-	oxygen  = "⛳️"
+	gridSize = 50
+)
+
+const (
+	wall      = "🚧"
+	path      = "◾️"
+	unknown   = "🧱"
+	oxygen    = "💧"
+	robotChar = "🤖"
 )
 
 type coordinate struct {
@@ -75,6 +79,17 @@ const (
 	directionEast
 )
 
+type robot struct {
+	X             int
+	Y             int
+	Direction     direction
+	Grid          map[coordinate]string
+	Computer      computer
+	oxygenPos     coordinate
+	oxygenStep    int
+	oxygenMaxStep int
+}
+
 func (d direction) String() string {
 	switch d {
 	case directionNorth:
@@ -90,12 +105,21 @@ func (d direction) String() string {
 	return "unknown"
 }
 
-type robot struct {
-	X         int
-	Y         int
-	Direction direction
-	Grid      map[coordinate]string
-	Computer  computer
+func newRobot(sequence []int) *robot {
+	r := robot{
+		X:    gridSize / 2,
+		Y:    gridSize / 2,
+		Grid: map[coordinate]string{},
+		Computer: computer{
+			Sequence:      make([]int, len(sequence)),
+			PauseAtOutput: true,
+			Input:         directionNorth,
+		},
+	}
+
+	copy(r.Computer.Sequence, sequence)
+
+	return &r
 }
 
 func main() {
@@ -113,27 +137,13 @@ func main() {
 	r1.checkNext(sequence, 1)
 
 	r1.show()
-}
 
-func newRobot(sequence []int) *robot {
-	var (
-		size = 60
-	)
+	// Put the robot at the oxygen position after completing the first part.
+	r1.X, r1.Y = r1.oxygenPos.X, r1.oxygenPos.Y
+	r1.oxygenTime(make(map[coordinate]struct{}), 1)
 
-	r := robot{
-		X:    size / 2,
-		Y:    size / 2,
-		Grid: map[coordinate]string{},
-		Computer: computer{
-			Sequence:      make([]int, len(sequence)),
-			PauseAtOutput: true,
-			Input:         directionNorth,
-		},
-	}
-
-	copy(r.Computer.Sequence, sequence)
-
-	return &r
+	fmt.Println("part 1: found oxygen after", r1.oxygenStep, "steps")
+	fmt.Println("part 2: time to fill", r1.oxygenMaxStep)
 }
 
 func (r *robot) checkNext(originalSequence []int, stepsFromStart int) {
@@ -143,13 +153,11 @@ func (r *robot) checkNext(originalSequence []int, stepsFromStart int) {
 		seq = make([]int, len(originalSequence))
 	)
 
+	// Copy the original sequence passed to this function to sequence.
 	copy(seq, originalSequence)
 
 	// Mark the current position as a path.
 	r.Grid[coordinate{X: x, Y: y}] = path
-
-	// r.show()
-	// time.Sleep(500 * time.Millisecond)
 
 	for _, dir := range []direction{directionNorth, directionSouth, directionWest, directionEast} {
 		// Copy the sequence passed so we can reset it for each direction.
@@ -168,7 +176,6 @@ func (r *robot) checkNext(originalSequence []int, stepsFromStart int) {
 		// we've already been in that direction, move on.
 		nextCoordinates := r.nextCoordiantes()
 		if _, ok := r.Grid[nextCoordinates]; ok {
-			fmt.Println("I've already seen position", dir.String())
 			continue
 		}
 
@@ -179,15 +186,11 @@ func (r *robot) checkNext(originalSequence []int, stepsFromStart int) {
 		moveResult := r.Computer.Output[0]
 		r.Computer.Output = []int{}
 
-		fmt.Println("checking", dir.String())
-
 		switch moveResult {
 		case 0:
-			fmt.Println("result was wall")
 			r.Grid[nextCoordinates] = wall
 
 		case 1:
-			fmt.Println("result was path")
 			r.Grid[nextCoordinates] = path
 			r.X = nextCoordinates.X
 			r.Y = nextCoordinates.Y
@@ -196,18 +199,49 @@ func (r *robot) checkNext(originalSequence []int, stepsFromStart int) {
 			r.checkNext(r.Computer.Sequence, stepsFromStart+1)
 
 		case 2:
-			// NOT: 229
-			fmt.Println("result was oxygen")
-			fmt.Println("found oxygen after", stepsFromStart, "steps")
-			time.Sleep(3 * time.Second)
+			r.oxygenPos = nextCoordinates
+			r.oxygenStep = stepsFromStart
 			r.Grid[nextCoordinates] = oxygen
 		}
 	}
 }
 
+func (r *robot) oxygenTime(seen map[coordinate]struct{}, maxSteps int) {
+	x, y := r.X, r.Y
+
+	for _, dir := range []direction{directionNorth, directionSouth, directionWest, directionEast} {
+		r.Direction = dir
+		r.X, r.Y = x, y
+
+		nextCoordinates := r.nextCoordiantes()
+		if _, ok := seen[nextCoordinates]; ok {
+			continue
+		}
+
+		typ, ok := r.Grid[nextCoordinates]
+		if !ok {
+			continue
+		}
+
+		if typ != path {
+			continue
+		}
+
+		if maxSteps > r.oxygenMaxStep {
+			r.oxygenMaxStep = maxSteps
+		}
+
+		seen[nextCoordinates] = struct{}{}
+		r.X = nextCoordinates.X
+		r.Y = nextCoordinates.Y
+
+		r.oxygenTime(seen, maxSteps+1)
+	}
+}
+
 func (r *robot) show() {
-	for x := range make([]struct{}, 60) {
-		for y := range make([]struct{}, 60) {
+	for x := range make([]struct{}, gridSize) {
+		for y := range make([]struct{}, gridSize) {
 			c := coordinate{X: x, Y: y}
 			p := unknown
 
@@ -216,11 +250,7 @@ func (r *robot) show() {
 			}
 
 			if x == r.X && y == r.Y {
-				p = "R"
-			}
-
-			if x == 30 && y == 30 {
-				p = "O"
+				p = robotChar
 			}
 
 			fmt.Print(p)
@@ -232,6 +262,7 @@ func (r *robot) show() {
 
 func (r *robot) nextCoordiantes() coordinate {
 	x, y := r.X, r.Y
+
 	switch r.Direction {
 	case directionNorth:
 		x--
